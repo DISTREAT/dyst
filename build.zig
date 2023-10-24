@@ -11,6 +11,12 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    const zig_argtic = b.createModule(.{
+        .source_file = .{ .path = "lib/zig-argtic/src/zig-argtic.zig" },
+    });
+
+    exe.addModule("zig-argtic", zig_argtic);
+
     b.installArtifact(exe);
 
     const run_cmd = b.addRunArtifact(exe);

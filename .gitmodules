@@ -1,0 +1,3 @@
+[submodule "lib/zig-argtic"]
+	path = lib/zig-argtic
+	url = https://github.com/DISTREAT/zig-argtic
