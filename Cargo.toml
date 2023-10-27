@@ -1,6 +1,10 @@
 [package]
 name = "dyst"
 version = "0.1.0"
+description = "A distilled package manager for GitHub release assets."
+repository = "https://github.com/DISTREAT/dyst"
+license = "MIT"
+authors = ["DISTREAT"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
