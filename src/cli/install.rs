@@ -67,7 +67,7 @@ pub async fn install_package(
         .into_iter()
         .filter(|release| !release.prerelease || including_prerelease)
         .next()
-        .context("There is no release available")?;
+        .context("There is no release available (consider passing `--prerelease`)")?;
 
     let auto_selected_asset = auto_select_asset(&latest_release.assets, custom_filter)
         .context(format!(

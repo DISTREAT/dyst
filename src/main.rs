@@ -18,6 +18,10 @@ enum Commands {
         /// The repository to install from (ex. DISTREAT/projavu)
         repository: String,
 
+        /// Allow the download of prereleases
+        #[arg(short, long)]
+        prerelease: bool,
+
         /// Select a specific asset by applying a custom filter on the asset name
         #[arg(short, long)]
         filter: Option<String>,
@@ -29,7 +33,11 @@ async fn main() -> Result<()> {
     let arguments = ArgumentParser::parse();
 
     match &arguments.command {
-        Commands::Install { repository, filter } => {
+        Commands::Install {
+            repository,
+            prerelease,
+            filter,
+        } => {
             if repository.matches('/').count() != 1 {
                 return Err(anyhow!(
                     "The provided repository seems invalid (expected `AUTHOR/NAME`)"
@@ -40,7 +48,7 @@ async fn main() -> Result<()> {
             let author = split_iterator.next().unwrap();
             let name = split_iterator.next().unwrap();
 
-            cli::install::install_package(author, name, true, filter).await?;
+            cli::install::install_package(author, name, *prerelease, filter).await?;
         }
     }
 
