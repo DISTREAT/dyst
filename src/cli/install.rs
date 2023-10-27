@@ -3,6 +3,9 @@ use anyhow::{anyhow, Context, Result};
 use itertools::Itertools;
 use octocrab::models::repos::Asset;
 use std::env::consts;
+use std::fs::{create_dir_all, File};
+use std::io::{copy, Cursor};
+use std::path::PathBuf;
 
 fn auto_select_asset<'a>(
     assets: &'a Vec<Asset>,
@@ -36,6 +39,14 @@ fn auto_select_asset<'a>(
         Some(lookup) => Some(lookup.1),
         None => None,
     }
+}
+
+async fn downloadFile(source_url: &str, output_file: &PathBuf) -> Result<()> {
+    let response = reqwest::get(source_url).await?;
+    let mut destination_file = File::create(output_file)?;
+    let mut content = Cursor::new(response.bytes().await?);
+    copy(&mut content, &mut destination_file)?;
+    Ok(())
 }
 
 pub async fn install_package(
@@ -80,7 +91,18 @@ pub async fn install_package(
                 .join(", ")
         ))?;
 
-    println!("{}", auto_selected_asset.name);
+    let mut asset_path = package_store.clone();
+    asset_path.push(repository_author);
+    asset_path.push(repository_name);
+    create_dir_all(&asset_path)?;
+    asset_path.push(&auto_selected_asset.name);
+
+    downloadFile(
+        auto_selected_asset.browser_download_url.as_str(),
+        &asset_path,
+    )
+    .await
+    .context("Failed to download the asset")?;
 
     Ok(())
 }
