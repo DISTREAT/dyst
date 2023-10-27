@@ -1,3 +1,4 @@
+use crate::common_directories;
 use anyhow::{anyhow, Context, Result};
 
 pub async fn install_package(
@@ -5,6 +6,8 @@ pub async fn install_package(
     repository_name: &str,
     including_prerelease: bool,
 ) -> Result<()> {
+    let package_store = common_directories::get_package_store()?;
+
     let releases = match octocrab::instance()
         .repos(repository_author, repository_name)
         .releases()

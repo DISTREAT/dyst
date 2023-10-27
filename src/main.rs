@@ -2,6 +2,7 @@ use anyhow::{anyhow, Result};
 use clap::{Parser, Subcommand};
 
 mod cli;
+mod common_directories;
 
 #[derive(Parser)]
 #[command(author, version, about)]
