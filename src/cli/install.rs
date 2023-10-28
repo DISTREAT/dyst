@@ -1,12 +1,16 @@
 use crate::common_directories;
 use anyhow::{anyhow, Context, Result};
 use archive_reader::Archive;
+use file_format::{FileFormat, Kind};
 use itertools::Itertools;
 use octocrab::models::repos::Asset;
 use std::env::consts;
-use std::fs::{create_dir_all, File};
+use std::fs::{create_dir_all, metadata, set_permissions, File};
 use std::io::{copy, Cursor};
+use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
+use symlink::symlink_file;
+use walkdir::WalkDir;
 
 const UNARCHIVABLE_EXTENSIONS: &'static [&str] = &["tar", "zip", "gz", "bz2", "xz", "zst", "rar"];
 
@@ -98,6 +102,7 @@ pub async fn install_package(
     custom_filter: &Option<String>,
 ) -> Result<()> {
     let package_store = common_directories::get_package_store()?;
+    let executables_path = common_directories::get_executables_path()?;
 
     let releases = match octocrab::instance()
         .repos(repository_author, repository_name)
@@ -145,6 +150,26 @@ pub async fn install_package(
     )
     .await
     .context("Failed to download the asset")?;
+
+    for entry in WalkDir::new(&asset_path)
+        .into_iter()
+        .filter_map(Result::ok)
+        .filter(|entry| entry.file_type().is_file())
+    {
+        let path = entry.path();
+        let format = FileFormat::from_file(path)?;
+
+        if format.kind() == Kind::Executable {
+            let mut permissions = metadata(path)?.permissions();
+            permissions.set_mode(0o755);
+            set_permissions(path, permissions)?;
+
+            let mut binary_path = executables_path.clone();
+            binary_path.push(entry.file_name());
+
+            symlink_file(path, binary_path)?;
+        }
+    }
 
     Ok(())
 }
