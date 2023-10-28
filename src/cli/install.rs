@@ -120,6 +120,7 @@ pub async fn install_package(
     repository_name: &str,
     including_prerelease: bool,
     custom_filter: &Option<Regex>,
+    rename_executable: &Option<(&str, &str)>,
 ) -> Result<()> {
     let package_store = common_directories::get_package_store()?;
     let executables_path = common_directories::get_executables_path()?;
@@ -204,7 +205,13 @@ pub async fn install_package(
             set_permissions(path, permissions)?;
 
             let mut binary_path = executables_path.clone();
-            binary_path.push(entry.file_name());
+            let file_name = entry.file_name();
+
+            if rename_executable.unwrap_or(("", "")).0 == file_name {
+                binary_path.push(rename_executable.unwrap().1);
+            } else {
+                binary_path.push(file_name);
+            }
 
             symlink_file(path, binary_path)?;
         }

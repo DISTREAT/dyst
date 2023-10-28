@@ -26,6 +26,10 @@ enum Commands {
         /// Select a specific asset by applying a custom regex filter on the asset name
         #[arg(short, long)]
         filter: Option<String>,
+
+        /// Replace the executable's name (ex. `binary-xyz/binary` to replace `binary-xyz` with `binary`)
+        #[arg(short, long)]
+        rename: Option<String>,
     },
 }
 
@@ -38,6 +42,7 @@ async fn main() -> Result<()> {
             repository,
             prerelease,
             filter,
+            rename,
         } => {
             if repository.matches('/').count() != 1 {
                 return Err(anyhow!(
@@ -57,7 +62,31 @@ async fn main() -> Result<()> {
                 None => None,
             };
 
-            cli::install::install_package(author, name, *prerelease, &regular_expression).await?;
+            let executable_rename: Option<(&str, &str)> = match rename {
+                Some(search_replace) => {
+                    if search_replace.matches('/').count() != 1 {
+                        return Err(anyhow!(
+                            "The provided rename option seems invalid (expected `match/replace`)"
+                        ));
+                    }
+
+                    let mut search_replace_split_iterator = search_replace.split('/');
+                    let search = search_replace_split_iterator.next().unwrap();
+                    let replace = search_replace_split_iterator.next().unwrap();
+
+                    Some((search, replace))
+                }
+                None => None,
+            };
+
+            cli::install::install_package(
+                author,
+                name,
+                *prerelease,
+                &regular_expression,
+                &executable_rename,
+            )
+            .await?;
         }
     }
 
