@@ -21,3 +21,27 @@ pub fn get_executables_path() -> Result<PathBuf> {
         Err(_) => return Ok(Xdg::new()?.exec()),
     }
 }
+
+pub fn open_database() -> Result<sqlite3::Connection> {
+    let mut package_store = get_package_store()?;
+    package_store.push("index.db3");
+
+    let connection = sqlite3::open(package_store)?;
+
+    connection.execute(
+        "
+        CREATE TABLE IF NOT EXISTS packages (
+            repository TEXT PRIMARY KEY UNIQUE,
+            tag TEXT NOT NULL,
+            lock INTEGER NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS dyst (
+            key TEXT PRIMARY KEY UNIQUE,
+            value TEXT
+        );
+        INSERT OR IGNORE INTO dyst (key, value) VALUES('version', '1');
+        ",
+    )?;
+
+    Ok(connection)
+}

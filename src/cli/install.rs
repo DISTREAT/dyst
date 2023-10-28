@@ -103,6 +103,7 @@ pub async fn install_package(
 ) -> Result<()> {
     let package_store = common_directories::get_package_store()?;
     let executables_path = common_directories::get_executables_path()?;
+    let index_db = common_directories::open_database()?;
 
     let releases = match octocrab::instance()
         .repos(repository_author, repository_name)
@@ -150,6 +151,22 @@ pub async fn install_package(
     )
     .await
     .context("Failed to download the asset")?;
+
+    let mut statement =
+        index_db.prepare("INSERT INTO packages (repository, tag, lock) VALUES(?, ?, ?)")?;
+    statement
+        .bind(
+            1,
+            format!("{}/{}", repository_author, repository_name).as_str(),
+        )
+        .unwrap();
+    statement.bind(2, latest_release.tag_name.as_str()).unwrap();
+    statement.bind(3, 0).unwrap();
+    while let state = statement.next()? {
+        if state == sqlite3::State::Done {
+            break;
+        }
+    }
 
     for entry in WalkDir::new(&asset_path)
         .into_iter()
