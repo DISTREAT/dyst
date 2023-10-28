@@ -40,6 +40,8 @@ enum Commands {
         /// The repository to uninstall (ex. DISTREAT/projavu)
         repository: String,
     },
+    /// List all installed repositories
+    List,
 }
 
 #[tokio::main]
@@ -95,6 +97,9 @@ async fn main() -> Result<()> {
             let (author, name) = split_repository_argument(repository)?;
 
             cli::remove::uninstall_package(author, name).await?;
+        }
+        Commands::List => {
+            cli::list::list_repositories().await?;
         }
     }
 
