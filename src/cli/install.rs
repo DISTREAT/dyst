@@ -5,7 +5,7 @@ use file_format::{FileFormat, Kind};
 use itertools::Itertools;
 use octocrab::models::repos::Asset;
 use std::env::consts;
-use std::fs::{create_dir_all, metadata, set_permissions, File};
+use std::fs::{create_dir_all, metadata, remove_dir_all, set_permissions, File};
 use std::io::{copy, Cursor};
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
@@ -95,6 +95,32 @@ async fn download_and_extract_asset(
     Ok(())
 }
 
+struct InstallErrorCleanup {
+    directory: PathBuf,
+    persist: bool,
+}
+
+impl InstallErrorCleanup {
+    pub fn new(directory: PathBuf) -> InstallErrorCleanup {
+        InstallErrorCleanup {
+            directory: directory,
+            persist: false,
+        }
+    }
+
+    pub fn persist(&mut self) {
+        self.persist = true;
+    }
+}
+
+impl Drop for InstallErrorCleanup {
+    fn drop(&mut self) {
+        if !self.persist {
+            let _ = remove_dir_all(&self.directory); // ignore error
+        }
+    }
+}
+
 pub async fn install_package(
     repository_author: &str,
     repository_name: &str,
@@ -144,6 +170,8 @@ pub async fn install_package(
     asset_path.push(repository_name);
 
     create_dir_all(&asset_path)?;
+    let mut errdefer = InstallErrorCleanup::new(asset_path.clone());
+
     download_and_extract_asset(
         auto_selected_asset.browser_download_url.as_str(),
         &auto_selected_asset.name,
@@ -187,6 +215,8 @@ pub async fn install_package(
             symlink_file(path, binary_path)?;
         }
     }
+
+    errdefer.persist();
 
     Ok(())
 }
