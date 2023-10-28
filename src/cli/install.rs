@@ -1,11 +1,14 @@
 use crate::common_directories;
 use anyhow::{anyhow, Context, Result};
+use archive_reader::Archive;
 use itertools::Itertools;
 use octocrab::models::repos::Asset;
 use std::env::consts;
 use std::fs::{create_dir_all, File};
 use std::io::{copy, Cursor};
 use std::path::PathBuf;
+
+const UNARCHIVABLE_EXTENSIONS: &'static [&str] = &["tar", "zip", "gz", "bz2", "xz", "zst", "rar"];
 
 fn auto_select_asset<'a>(
     assets: &'a Vec<Asset>,
@@ -41,11 +44,50 @@ fn auto_select_asset<'a>(
     }
 }
 
-async fn downloadFile(source_url: &str, output_file: &PathBuf) -> Result<()> {
+async fn download_and_extract_asset(
+    source_url: &str,
+    file_base_name: &str,
+    output_directory: &PathBuf,
+) -> Result<()> {
+    // I considered implementing a stream decompressor/unarchiver for different (combinations of) formats myself
+    // but it would be unnecessary yak shaving. Thus, I am required to temporarily store the file
+    // on disk to use one of the existing libraries to unarchive it.
+    let file_path = PathBuf::from(file_base_name);
+    let file_extension = file_path.extension().unwrap_or(std::ffi::OsStr::new(""));
     let response = reqwest::get(source_url).await?;
-    let mut destination_file = File::create(output_file)?;
     let mut content = Cursor::new(response.bytes().await?);
-    copy(&mut content, &mut destination_file)?;
+
+    if UNARCHIVABLE_EXTENSIONS.contains(&file_extension.to_str().unwrap()) {
+        let mut temporary_file = tempfile::NamedTempFile::new()?;
+        copy(&mut content, &mut temporary_file)?;
+
+        let temporary_path = temporary_file.into_temp_path();
+        let mut archive = Archive::open(&temporary_path);
+        let file_names = archive
+            .block_size(1024 * 1024)
+            .list_file_names()?
+            .collect::<archive_reader::error::Result<Vec<_>>>()?;
+
+        for file_name in file_names {
+            let mut output_path = output_directory.clone();
+            output_path.push(&file_name);
+            create_dir_all(output_path.parent().unwrap())?;
+
+            if output_path.to_str().unwrap().chars().last().unwrap() != '/' {
+                let mut output_file = File::create(output_path)?;
+                let _ = archive.read_file(&file_name, &mut output_file)?;
+            }
+        }
+
+        temporary_path.close()?;
+    } else {
+        let mut output_file = output_directory.clone();
+        output_file.push(file_base_name);
+
+        let mut destination_file = File::create(output_file)?;
+        copy(&mut content, &mut destination_file)?;
+    }
+
     Ok(())
 }
 
@@ -94,11 +136,11 @@ pub async fn install_package(
     let mut asset_path = package_store.clone();
     asset_path.push(repository_author);
     asset_path.push(repository_name);
-    create_dir_all(&asset_path)?;
-    asset_path.push(&auto_selected_asset.name);
 
-    downloadFile(
+    create_dir_all(&asset_path)?;
+    download_and_extract_asset(
         auto_selected_asset.browser_download_url.as_str(),
+        &auto_selected_asset.name,
         &asset_path,
     )
     .await
