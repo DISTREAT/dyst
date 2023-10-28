@@ -4,6 +4,7 @@ use archive_reader::Archive;
 use file_format::{FileFormat, Kind};
 use itertools::Itertools;
 use octocrab::models::repos::Asset;
+use regex::Regex;
 use std::env::consts;
 use std::fs::{create_dir_all, metadata, remove_dir_all, set_permissions, File};
 use std::io::{copy, Cursor};
@@ -16,19 +17,12 @@ const UNARCHIVABLE_EXTENSIONS: &'static [&str] = &["tar", "zip", "gz", "bz2", "x
 
 fn auto_select_asset<'a>(
     assets: &'a Vec<Asset>,
-    custom_filter: &'a Option<String>,
+    custom_filter: &'a Option<Regex>,
 ) -> Option<&'a Asset> {
     match assets
         .into_iter()
         .map(|asset| match custom_filter {
-            Some(filter) => (
-                asset
-                    .name
-                    .to_lowercase()
-                    .matches(&filter.to_lowercase())
-                    .count(),
-                asset,
-            ),
+            Some(filter) => (filter.find_iter(&asset.name.to_lowercase()).count(), asset),
             None => {
                 let os_match_count = asset.name.to_lowercase().matches(consts::OS).count();
                 let architecture_match_count =
@@ -125,7 +119,7 @@ pub async fn install_package(
     repository_author: &str,
     repository_name: &str,
     including_prerelease: bool,
-    custom_filter: &Option<String>,
+    custom_filter: &Option<Regex>,
 ) -> Result<()> {
     let package_store = common_directories::get_package_store()?;
     let executables_path = common_directories::get_executables_path()?;

@@ -1,5 +1,6 @@
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use clap::{Parser, Subcommand};
+use regex::Regex;
 
 mod cli;
 mod common_directories;
@@ -22,7 +23,7 @@ enum Commands {
         #[arg(short, long)]
         prerelease: bool,
 
-        /// Select a specific asset by applying a custom filter on the asset name
+        /// Select a specific asset by applying a custom regex filter on the asset name
         #[arg(short, long)]
         filter: Option<String>,
     },
@@ -48,7 +49,15 @@ async fn main() -> Result<()> {
             let author = split_iterator.next().unwrap();
             let name = split_iterator.next().unwrap();
 
-            cli::install::install_package(author, name, *prerelease, filter).await?;
+            let regular_expression: Option<Regex> = match filter {
+                Some(custom_expression) => Some(
+                    Regex::new(custom_expression)
+                        .context("The filter contains illegal regex syntax")?,
+                ),
+                None => None,
+            };
+
+            cli::install::install_package(author, name, *prerelease, &regular_expression).await?;
         }
     }
 
