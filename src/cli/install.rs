@@ -136,6 +136,7 @@ pub async fn install_package(
     repository_author: &str,
     repository_name: &str,
     including_prerelease: bool,
+    override_latest_tag: &Option<String>,
     custom_filter: &Option<Regex>,
     rename_executable: &Option<(&str, &str)>,
 ) -> Result<()> {
@@ -160,11 +161,18 @@ pub async fn install_package(
         Err(error) => return Err(error.into()),
     };
 
-    let latest_release = releases
-        .into_iter()
-        .filter(|release| !release.prerelease || including_prerelease)
-        .next()
-        .context("There is no release available (consider passing `--prerelease`)")?;
+    let latest_release = match override_latest_tag {
+        Some(tag_name) => releases
+            .into_iter()
+            .filter(|release| release.tag_name == *tag_name)
+            .next()
+            .context("A release with the specified tag could not be found")?,
+        None => releases
+            .into_iter()
+            .filter(|release| !release.prerelease || including_prerelease)
+            .next()
+            .context("There is no release available (consider passing `--prerelease`)")?,
+    };
 
     let auto_selected_asset = auto_select_asset(&latest_release.assets, custom_filter)
         .context(format!(

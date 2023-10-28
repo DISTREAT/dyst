@@ -19,6 +19,10 @@ enum Commands {
         /// The repository to install from (ex. DISTREAT/projavu)
         repository: String,
 
+        /// Specify a tag to install
+        #[arg(short, long)]
+        tag: Option<String>,
+
         /// Allow the download of prereleases
         #[arg(short, long)]
         prerelease: bool,
@@ -40,6 +44,7 @@ async fn main() -> Result<()> {
     match &arguments.command {
         Commands::Install {
             repository,
+            tag,
             prerelease,
             filter,
             rename,
@@ -83,6 +88,7 @@ async fn main() -> Result<()> {
                 author,
                 name,
                 *prerelease,
+                &tag,
                 &regular_expression,
                 &executable_rename,
             )
