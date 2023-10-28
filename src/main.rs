@@ -42,6 +42,11 @@ enum Commands {
     },
     /// List all installed repositories
     List,
+    /// Search GitHub for repositories
+    Search {
+        /// The keyword to search for
+        query: String,
+    },
 }
 
 #[tokio::main]
@@ -100,6 +105,9 @@ async fn main() -> Result<()> {
         }
         Commands::List => {
             cli::list::list_repositories().await?;
+        }
+        Commands::Search { query } => {
+            cli::search::search_repositories(query).await?;
         }
     }
 
