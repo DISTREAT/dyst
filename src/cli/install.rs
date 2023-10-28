@@ -90,13 +90,15 @@ async fn download_and_extract_asset(
 }
 
 struct InstallErrorCleanup {
+    repository: String,
     directory: PathBuf,
     persist: bool,
 }
 
 impl InstallErrorCleanup {
-    pub fn new(directory: PathBuf) -> InstallErrorCleanup {
+    pub fn new(repository: String, directory: PathBuf) -> InstallErrorCleanup {
         InstallErrorCleanup {
+            repository: repository,
             directory: directory,
             persist: false,
         }
@@ -110,6 +112,21 @@ impl InstallErrorCleanup {
 impl Drop for InstallErrorCleanup {
     fn drop(&mut self) {
         if !self.persist {
+            let index_db = common_directories::open_database();
+
+            if index_db.is_ok() {
+                let connection = index_db.unwrap();
+                let mut statement = connection
+                    .prepare("DELETE FROM packages WHERE repository = ?")
+                    .unwrap();
+                statement.bind(1, self.repository.as_str()).unwrap();
+                while let state = statement.next().unwrap() {
+                    if state == sqlite3::State::Done {
+                        break;
+                    }
+                }
+            }
+
             let _ = remove_dir_all(&self.directory); // ignore error
         }
     }
@@ -165,7 +182,10 @@ pub async fn install_package(
     asset_path.push(repository_name);
 
     create_dir_all(&asset_path)?;
-    let mut errdefer = InstallErrorCleanup::new(asset_path.clone());
+    let mut errdefer = InstallErrorCleanup::new(
+        format!("{}/{}", repository_author, repository_name),
+        asset_path.clone(),
+    );
 
     download_and_extract_asset(
         auto_selected_asset.browser_download_url.as_str(),
