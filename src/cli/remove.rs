@@ -19,8 +19,8 @@ pub async fn uninstall_package(repository_author: &str, repository_name: &str) -
         format!("{}/{}", repository_author, repository_name).as_str(),
     )?;
 
-    while let state = statement.next().unwrap() {
-        if state == sqlite3::State::Done {
+    loop {
+        if statement.next().unwrap() == sqlite3::State::Done {
             break;
         }
     }

@@ -120,8 +120,9 @@ impl Drop for InstallErrorCleanup {
                     .prepare("DELETE FROM packages WHERE repository = ?")
                     .unwrap();
                 statement.bind(1, self.repository.as_str()).unwrap();
-                while let state = statement.next().unwrap() {
-                    if state == sqlite3::State::Done {
+
+                loop {
+                    if statement.next().unwrap() == sqlite3::State::Done {
                         break;
                     }
                 }
@@ -213,8 +214,9 @@ pub async fn install_package(
         .unwrap();
     statement.bind(2, latest_release.tag_name.as_str()).unwrap();
     statement.bind(3, 0).unwrap();
-    while let state = statement.next()? {
-        if state == sqlite3::State::Done {
+
+    loop {
+        if statement.next().unwrap() == sqlite3::State::Done {
             break;
         }
     }
