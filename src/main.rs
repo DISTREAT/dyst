@@ -35,6 +35,11 @@ enum Commands {
         #[arg(short, long)]
         rename: Option<String>,
     },
+    /// Remove an installed asset
+    Remove {
+        /// The repository to uninstall (ex. DISTREAT/projavu)
+        repository: String,
+    },
 }
 
 #[tokio::main]
@@ -49,15 +54,7 @@ async fn main() -> Result<()> {
             filter,
             rename,
         } => {
-            if repository.matches('/').count() != 1 {
-                return Err(anyhow!(
-                    "The provided repository seems invalid (expected `AUTHOR/NAME`)"
-                ));
-            }
-
-            let mut split_iterator = repository.split('/');
-            let author = split_iterator.next().unwrap();
-            let name = split_iterator.next().unwrap();
+            let (author, name) = split_repository_argument(repository)?;
 
             let regular_expression: Option<Regex> = match filter {
                 Some(custom_expression) => Some(
@@ -94,7 +91,26 @@ async fn main() -> Result<()> {
             )
             .await?;
         }
+        Commands::Remove { repository } => {
+            let (author, name) = split_repository_argument(repository)?;
+
+            cli::remove::uninstall_package(author, name).await?;
+        }
     }
 
     Ok(())
+}
+
+fn split_repository_argument(repository: &str) -> Result<(&str, &str)> {
+    if repository.matches('/').count() != 1 {
+        return Err(anyhow!(
+            "The provided repository seems invalid (expected `author/name`)"
+        ));
+    }
+
+    let mut split_iterator = repository.split('/');
+    let author = split_iterator.next().unwrap();
+    let name = split_iterator.next().unwrap();
+
+    Ok((author, name))
 }
