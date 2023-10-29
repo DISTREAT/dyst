@@ -205,7 +205,7 @@ pub async fn install_package(
     .context("Failed to download the asset")?;
 
     let mut statement =
-        index_db.prepare("INSERT INTO packages (repository, tag, lock) VALUES(?, ?, ?)")?;
+        index_db.prepare("INSERT INTO packages (repository, tag, lock, assetFilter, execRename, preReleases) VALUES(?, ?, ?, ?, ?, ?)")?;
     statement
         .bind(
             1,
@@ -214,6 +214,17 @@ pub async fn install_package(
         .unwrap();
     statement.bind(2, latest_release.tag_name.as_str()).unwrap();
     statement.bind(3, 0).unwrap();
+    match custom_filter {
+        Some(filter) => statement.bind(4, filter.as_str()).unwrap(),
+        None => statement.bind(4, &sqlite3::Value::Null).unwrap(),
+    };
+    match rename_executable {
+        Some(rename) => statement
+            .bind(5, format!("{}/{}", rename.0, rename.1).as_str())
+            .unwrap(),
+        None => statement.bind(5, &sqlite3::Value::Null).unwrap(),
+    };
+    statement.bind(6, including_prerelease as i64).unwrap();
 
     loop {
         if statement.next().unwrap() == sqlite3::State::Done {

@@ -33,7 +33,10 @@ pub fn open_database() -> Result<sqlite3::Connection> {
         CREATE TABLE IF NOT EXISTS packages (
             repository TEXT PRIMARY KEY UNIQUE,
             tag TEXT NOT NULL,
-            lock INTEGER NOT NULL
+            lock INTEGER NOT NULL,
+            assetFilter TEXT,
+            execRename TEXT,
+            preReleases INTEGER NOT NULL
         );
         CREATE TABLE IF NOT EXISTS dyst (
             key TEXT PRIMARY KEY UNIQUE,
