@@ -181,10 +181,18 @@ async fn main() -> Result<()> {
             let index_db = common_directories::open_database()?;
             let (author, name) = split_repository_argument(repository)?;
 
+            if !is_repository_installed(author, name)? {
+                return Err(anyhow!("The requested repository is not installed"));
+            }
+
             cli::prereleases::allow_prereleases(&index_db, author, name).await?;
         }
         Commands::ListExecs { repository } => {
             let (author, name) = split_repository_argument(repository)?;
+
+            if !is_repository_installed(author, name)? {
+                return Err(anyhow!("The requested repository is not installed"));
+            }
 
             cli::list::list_executables(author, name)?;
         }
