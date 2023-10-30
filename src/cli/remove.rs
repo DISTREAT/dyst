@@ -1,6 +1,6 @@
 use crate::common_directories;
 use anyhow::Result;
-use std::fs::{read_dir, read_link, remove_dir_all, remove_file};
+use std::fs::{read_dir, read_link, remove_dir, remove_dir_all, remove_file};
 
 pub async fn uninstall_package(
     index_db: &sqlite3::Connection,
@@ -12,9 +12,14 @@ pub async fn uninstall_package(
 
     let mut package_src_path = package_store.clone();
     package_src_path.push(repository_author);
+    let package_parent_path = package_src_path.clone();
     package_src_path.push(repository_name);
 
     remove_dir_all(&package_src_path)?;
+
+    if package_parent_path.read_dir()?.next().is_none() {
+        remove_dir(&package_parent_path)?;
+    }
 
     let mut statement = index_db.prepare("DELETE FROM packages WHERE repository = ?")?;
     statement.bind(
