@@ -98,6 +98,10 @@ async fn main() -> Result<()> {
             let index_db = common_directories::open_database()?;
             let (author, name) = split_repository_argument(repository)?;
 
+            if is_repository_installed(author, name)? {
+                return Err(anyhow!("The requested repository is already installed"));
+            }
+
             let mut installer = cli::install::PackageInstallation::new(&index_db, author, name);
             installer.prereleases(*prerelease);
             installer.lock(*lock);
@@ -135,6 +139,10 @@ async fn main() -> Result<()> {
         Commands::Remove { repository } => {
             let index_db = common_directories::open_database()?;
             let (author, name) = split_repository_argument(repository)?;
+
+            if !is_repository_installed(author, name)? {
+                return Err(anyhow!("The requested repository is not installed"));
+            }
 
             cli::remove::uninstall_package(&index_db, author, name).await?;
         }
