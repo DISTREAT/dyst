@@ -68,6 +68,11 @@ enum Commands {
         /// The repository in question
         repository: String,
     },
+    /// List all executables of an installed repository
+    ListExecs {
+        /// The repository in question
+        repository: String,
+    },
 }
 
 #[tokio::main]
@@ -154,6 +159,11 @@ async fn main() -> Result<()> {
             let (author, name) = split_repository_argument(repository)?;
 
             cli::prereleases::allow_prereleases(&index_db, author, name).await?;
+        }
+        Commands::ListExecs { repository } => {
+            let (author, name) = split_repository_argument(repository)?;
+
+            cli::list::list_executables(author, name)?;
         }
     }
 
