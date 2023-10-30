@@ -47,6 +47,8 @@ enum Commands {
         /// The keyword to search for
         query: String,
     },
+    /// Update all downloaded repositories
+    Update,
 }
 
 #[tokio::main]
@@ -108,6 +110,11 @@ async fn main() -> Result<()> {
         }
         Commands::Search { query } => {
             cli::search::search_repositories(query).await?;
+        }
+        Commands::Update => {
+            let index_db = common_directories::open_database()?;
+
+            cli::update::update_repositories(&index_db).await?;
         }
     }
 

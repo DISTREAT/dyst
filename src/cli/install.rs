@@ -63,7 +63,7 @@ pub struct PackageInstallation<'a> {
     index_db: &'a sqlite3::Connection,
     repository_author: &'a str,
     repository_name: &'a str,
-    selected_release: Option<Release>,
+    pub selected_release: Option<Release>,
     including_prerelease: bool,
     override_latest_tag: Option<String>,
     asset_regex_filter: Option<Regex>,
