@@ -153,11 +153,19 @@ async fn main() -> Result<()> {
             let index_db = common_directories::open_database()?;
             let (author, name) = split_repository_argument(repository)?;
 
+            if !is_repository_installed(author, name)? {
+                return Err(anyhow!("The requested repository is not installed"));
+            }
+
             cli::lock::lock_package(&index_db, author, name).await?;
         }
         Commands::Unlock { repository } => {
             let index_db = common_directories::open_database()?;
             let (author, name) = split_repository_argument(repository)?;
+
+            if !is_repository_installed(author, name)? {
+                return Err(anyhow!("The requested repository is not installed"));
+            }
 
             cli::lock::unlock_package(&index_db, author, name).await?;
         }
@@ -205,4 +213,14 @@ fn split_repository_argument(repository: &str) -> Result<(&str, &str)> {
     let name = split_iterator.next().unwrap();
 
     Ok((author, name))
+}
+
+fn is_repository_installed(author: &str, name: &str) -> Result<bool> {
+    let package_store = common_directories::get_package_store()?;
+
+    let mut asset_path = package_store.clone();
+    asset_path.push(author);
+    asset_path.push(name);
+
+    Ok(asset_path.is_dir())
 }
