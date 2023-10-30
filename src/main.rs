@@ -63,6 +63,11 @@ enum Commands {
         /// The repository to unlock
         repository: String,
     },
+    /// Allow downloads of prereleases for a repository
+    AllowPrereleases {
+        /// The repository in question
+        repository: String,
+    },
 }
 
 #[tokio::main]
@@ -143,6 +148,12 @@ async fn main() -> Result<()> {
             let (author, name) = split_repository_argument(repository)?;
 
             cli::lock::unlock_package(&index_db, author, name).await?;
+        }
+        Commands::AllowPrereleases { repository } => {
+            let index_db = common_directories::open_database()?;
+            let (author, name) = split_repository_argument(repository)?;
+
+            cli::prereleases::allow_prereleases(&index_db, author, name).await?;
         }
     }
 
