@@ -2,12 +2,15 @@ use crate::common_directories;
 use anyhow::{anyhow, Context, Result};
 use archive_reader::Archive;
 use file_format::{FileFormat, Kind};
+use futures_util::StreamExt;
+use indicatif::{ProgressBar, ProgressStyle};
 use itertools::Itertools;
 use octocrab::models::repos::{Asset, Release};
 use regex::Regex;
+use std::cmp::min;
 use std::env::consts;
 use std::fs::{create_dir_all, metadata, remove_dir_all, set_permissions, File};
-use std::io::{copy, Cursor};
+use std::io::Write;
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 use symlink::symlink_file;
@@ -255,14 +258,21 @@ impl PackageInstallation<'_> {
         let file_path = PathBuf::from(file_base_name);
         let file_extension = file_path.extension().unwrap_or(std::ffi::OsStr::new(""));
         let response = reqwest::get(source_url).await?;
-        let mut content = Cursor::new(response.bytes().await?);
+        let total_size = response.content_length().unwrap(); // GitHub as a source returns the content length, so unlikely to fail
+        let stream = response.bytes_stream().boxed();
+
+        let progressbar = ProgressBar::new(total_size);
+        progressbar.set_style(ProgressStyle::default_bar()
+            .template("[{elapsed_precise}] [{wide_bar}] {bytes}/{total_bytes} ({bytes_per_sec}, {eta})")?
+            .progress_chars("=>-"));
 
         const UNARCHIVABLE_EXTENSIONS: &'static [&str] =
             &["tar", "zip", "gz", "bz2", "xz", "zst", "rar"];
 
         if UNARCHIVABLE_EXTENSIONS.contains(&file_extension.to_str().unwrap()) {
             let mut temporary_file = tempfile::NamedTempFile::new()?;
-            copy(&mut content, &mut temporary_file)?;
+            Self::copy_stream_to_file(&mut temporary_file, stream, &progressbar, &total_size)
+                .await?;
 
             let temporary_path = temporary_file.into_temp_path();
             let mut archive = Archive::open(&temporary_path);
@@ -288,7 +298,30 @@ impl PackageInstallation<'_> {
             output_file.push(file_base_name);
 
             let mut destination_file = File::create(output_file)?;
-            copy(&mut content, &mut destination_file)?;
+            Self::copy_stream_to_file(&mut destination_file, stream, &progressbar, &total_size)
+                .await?;
+        }
+
+        progressbar.finish();
+
+        Ok(())
+    }
+
+    // abstraction for download_and_extract_asset
+    async fn copy_stream_to_file(
+        file: &mut dyn Write,
+        mut stream: impl futures_core::Stream<Item = reqwest::Result<bytes::Bytes>> + std::marker::Unpin,
+        progressbar: &ProgressBar,
+        total_size: &u64,
+    ) -> Result<()> {
+        let mut progress: u64 = 0;
+
+        while let Some(item) = stream.next().await {
+            let chunk = item.or(Err(anyhow!("Could not download the asset")))?;
+            file.write_all(&chunk)
+                .or(Err(anyhow!("Could not save the asset to disk")))?;
+            progress = min(progress + (chunk.len() as u64), *total_size);
+            progressbar.set_position(progress);
         }
 
         Ok(())
