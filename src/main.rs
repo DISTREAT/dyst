@@ -34,6 +34,10 @@ enum Commands {
         /// Replace the executable's name (ex. `binary-xyz/binary` to replace `binary-xyz` with `binary`)
         #[arg(short, long)]
         rename: Option<String>,
+
+        /// Lock the package, preventing updates
+        #[arg(short, long)]
+        lock: bool,
     },
     /// Remove an installed asset
     Remove {
@@ -72,12 +76,14 @@ async fn main() -> Result<()> {
             prerelease,
             filter,
             rename,
+            lock,
         } => {
             let index_db = common_directories::open_database()?;
             let (author, name) = split_repository_argument(repository)?;
 
             let mut installer = cli::install::PackageInstallation::new(&index_db, author, name);
             installer.prereleases(*prerelease);
+            installer.lock(*lock);
 
             if tag.is_some() {
                 installer.latest_tag(tag.clone().unwrap());

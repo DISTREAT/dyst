@@ -65,6 +65,7 @@ pub struct PackageInstallation<'a> {
     repository_name: &'a str,
     pub selected_release: Option<Release>,
     including_prerelease: bool,
+    lock_updates: bool,
     override_latest_tag: Option<String>,
     asset_regex_filter: Option<Regex>,
     rename_executable: Option<(String, String)>,
@@ -82,6 +83,7 @@ impl PackageInstallation<'_> {
             repository_name: repository_name,
             selected_release: None,
             including_prerelease: false,
+            lock_updates: false,
             override_latest_tag: None,
             asset_regex_filter: None,
             rename_executable: None,
@@ -90,6 +92,10 @@ impl PackageInstallation<'_> {
 
     pub fn prereleases(&mut self, include: bool) {
         self.including_prerelease = include;
+    }
+
+    pub fn lock(&mut self, lock: bool) {
+        self.lock_updates = lock;
     }
 
     pub fn latest_tag(&mut self, tag: String) {
@@ -301,7 +307,7 @@ impl PackageInstallation<'_> {
         statement
             .bind(2, self.selected_release.as_ref().unwrap().tag_name.as_str())
             .unwrap();
-        statement.bind(3, 0).unwrap();
+        statement.bind(3, self.lock_updates as i64).unwrap();
         match &self.asset_regex_filter {
             Some(filter) => statement.bind(4, filter.as_str()).unwrap(),
             None => statement.bind(4, &sqlite3::Value::Null).unwrap(),
