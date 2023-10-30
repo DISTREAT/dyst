@@ -114,6 +114,10 @@ impl PackageInstallation<'_> {
     }
 
     pub async fn fetch_release(&mut self) -> Result<()> {
+        println!(
+            "Fetching releases for '{}/{}'...",
+            self.repository_author, self.repository_name
+        );
         let releases = match octocrab::instance()
             .repos(self.repository_author, self.repository_name)
             .releases()
@@ -156,6 +160,11 @@ impl PackageInstallation<'_> {
         let executables_path = common_directories::get_executables_path()?;
         let selected_release = self.selected_release.clone().unwrap();
 
+        println!(
+            "Starting installation for release: {}",
+            selected_release.tag_name
+        );
+
         let auto_selected_asset = self.auto_select_asset(&selected_release.assets)
             .context(format!(
                 "An asset could not be automatically selected, try applying a custom filter to select one: {}",
@@ -166,6 +175,7 @@ impl PackageInstallation<'_> {
                     .collect::<Vec<String>>()
                     .join(", ")
             ))?;
+        println!("Preparing for asset download: {}", auto_selected_asset.name);
 
         let mut asset_path = package_store.clone();
         asset_path.push(self.repository_author);
@@ -178,6 +188,7 @@ impl PackageInstallation<'_> {
             asset_path.clone(),
         );
 
+        println!("Downloading asset...");
         Self::download_and_extract_asset(
             auto_selected_asset.browser_download_url.as_str(),
             &auto_selected_asset.name,
@@ -188,6 +199,7 @@ impl PackageInstallation<'_> {
 
         self.add_index_db_entry()?;
 
+        println!("Creating symlinks to the executables...");
         for entry in WalkDir::new(&asset_path)
             .into_iter()
             .filter_map(Result::ok)
@@ -220,6 +232,7 @@ impl PackageInstallation<'_> {
 
         errdefer.persist();
 
+        println!("Done.");
         Ok(())
     }
 
