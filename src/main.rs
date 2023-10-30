@@ -73,6 +73,13 @@ enum Commands {
         /// The repository in question
         repository: String,
     },
+    /// Rename an executable
+    Rename {
+        /// The repository in question
+        repository: String,
+        /// Replace the executable's name (ex. `binary-xyz/binary` to replace `binary-xyz` with `binary`)
+        rename: String,
+    },
 }
 
 #[tokio::main]
@@ -164,6 +171,22 @@ async fn main() -> Result<()> {
             let (author, name) = split_repository_argument(repository)?;
 
             cli::list::list_executables(author, name)?;
+        }
+        Commands::Rename { repository, rename } => {
+            let index_db = common_directories::open_database()?;
+            let (author, name) = split_repository_argument(repository)?;
+
+            if rename.matches('/').count() != 1 {
+                return Err(anyhow!(
+                    "The provided rename option seems invalid (expected `match/replace`)"
+                ));
+            }
+
+            let mut search_replace_split_iterator = rename.split('/');
+            let search = search_replace_split_iterator.next().unwrap();
+            let replace = search_replace_split_iterator.next().unwrap();
+
+            cli::rename::rename_executable(&index_db, author, name, search, replace).await?;
         }
     }
 
