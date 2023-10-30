@@ -49,6 +49,16 @@ enum Commands {
     },
     /// Update all downloaded repositories
     Update,
+    /// Lock a repository, preventing updates
+    Lock {
+        /// The repository to lock
+        repository: String,
+    },
+    /// Unlock a repository, allowing updates
+    Unlock {
+        /// The repository to unlock
+        repository: String,
+    },
 }
 
 #[tokio::main]
@@ -115,6 +125,18 @@ async fn main() -> Result<()> {
             let index_db = common_directories::open_database()?;
 
             cli::update::update_repositories(&index_db).await?;
+        }
+        Commands::Lock { repository } => {
+            let index_db = common_directories::open_database()?;
+            let (author, name) = split_repository_argument(repository)?;
+
+            cli::lock::lock_package(&index_db, author, name).await?;
+        }
+        Commands::Unlock { repository } => {
+            let index_db = common_directories::open_database()?;
+            let (author, name) = split_repository_argument(repository)?;
+
+            cli::lock::unlock_package(&index_db, author, name).await?;
         }
     }
 
