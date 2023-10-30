@@ -1,5 +1,5 @@
 use crate::common_directories;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use file_format::{FileFormat, Kind};
 use walkdir::WalkDir;
 
@@ -27,6 +27,10 @@ pub fn list_executables(repository_author: &str, repository_name: &str) -> Resul
     let mut asset_path = package_store.clone();
     asset_path.push(repository_author);
     asset_path.push(repository_name);
+
+    if !asset_path.is_dir() {
+        return Err(anyhow!("The requested repository is not installed"));
+    }
 
     for entry in WalkDir::new(&asset_path)
         .into_iter()
