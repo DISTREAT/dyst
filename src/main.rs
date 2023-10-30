@@ -63,40 +63,38 @@ async fn main() -> Result<()> {
         } => {
             let (author, name) = split_repository_argument(repository)?;
 
-            let regular_expression: Option<Regex> = match filter {
-                Some(custom_expression) => Some(
-                    Regex::new(custom_expression)
-                        .context("The filter contains illegal regex syntax")?,
-                ),
-                None => None,
-            };
+            let mut installer = cli::install::PackageInstallation::new(author, name);
+            installer.prereleases(*prerelease);
 
-            let executable_rename: Option<(&str, &str)> = match rename {
-                Some(search_replace) => {
-                    if search_replace.matches('/').count() != 1 {
-                        return Err(anyhow!(
-                            "The provided rename option seems invalid (expected `match/replace`)"
-                        ));
-                    }
+            if tag.is_some() {
+                installer.latest_tag(tag.clone().unwrap());
+            }
 
-                    let mut search_replace_split_iterator = search_replace.split('/');
-                    let search = search_replace_split_iterator.next().unwrap();
-                    let replace = search_replace_split_iterator.next().unwrap();
+            if filter.is_some() {
+                let regular_expression = Regex::new(&filter.as_ref().unwrap())
+                    .context("The filter contains illegal regex syntax")?;
 
-                    Some((search, replace))
+                installer.asset_regex_filter(regular_expression);
+            }
+
+            if rename.is_some() {
+                let search_replace = rename.as_ref().unwrap();
+
+                if search_replace.matches('/').count() != 1 {
+                    return Err(anyhow!(
+                        "The provided rename option seems invalid (expected `match/replace`)"
+                    ));
                 }
-                None => None,
-            };
 
-            cli::install::install_package(
-                author,
-                name,
-                *prerelease,
-                &tag,
-                &regular_expression,
-                &executable_rename,
-            )
-            .await?;
+                let mut search_replace_split_iterator = search_replace.split('/');
+                let search = search_replace_split_iterator.next().unwrap();
+                let replace = search_replace_split_iterator.next().unwrap();
+
+                installer.rename_executable(search.to_string(), replace.to_string());
+            }
+
+            installer.fetch_release().await?;
+            installer.install().await?;
         }
         Commands::Remove { repository } => {
             let (author, name) = split_repository_argument(repository)?;
