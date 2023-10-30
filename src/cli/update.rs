@@ -17,6 +17,10 @@ pub async fn update_repositories(index_db: &sqlite3::Connection) -> Result<()> {
         let prereleases = statement.read::<i64>(5).unwrap() != 0;
 
         if lock {
+            println!(
+                "Warning: '{}' is locked and will not be updated",
+                repository
+            );
             continue;
         }
 
@@ -46,8 +50,14 @@ pub async fn update_repositories(index_db: &sqlite3::Connection) -> Result<()> {
         let release = installer.selected_release.as_ref().unwrap();
 
         if release.tag_name != tag {
+            println!(
+                "Updating '{}' from '{}' to '{}'...",
+                repository, tag, release.tag_name
+            );
             cli::remove::uninstall_package(&index_db, repository_author, repository_name).await?;
             installer.install().await?;
+        } else {
+            println!("No newer release was found.");
         }
     }
 
