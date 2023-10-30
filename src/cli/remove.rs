@@ -2,10 +2,13 @@ use crate::common_directories;
 use anyhow::Result;
 use std::fs::{read_dir, read_link, remove_dir_all, remove_file};
 
-pub async fn uninstall_package(repository_author: &str, repository_name: &str) -> Result<()> {
+pub async fn uninstall_package(
+    index_db: &sqlite3::Connection,
+    repository_author: &str,
+    repository_name: &str,
+) -> Result<()> {
     let package_store = common_directories::get_package_store()?;
     let executables_path = common_directories::get_executables_path()?;
-    let index_db = common_directories::open_database()?;
 
     let mut package_src_path = package_store.clone();
     package_src_path.push(repository_author);

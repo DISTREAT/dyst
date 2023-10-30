@@ -13,15 +13,21 @@ use std::path::PathBuf;
 use symlink::symlink_file;
 use walkdir::WalkDir;
 
-struct InstallErrorCleanup {
+struct InstallErrorCleanup<'a> {
+    index_db: &'a sqlite3::Connection,
     repository: String,
     directory: PathBuf,
     persist: bool,
 }
 
-impl InstallErrorCleanup {
-    pub fn new(repository: String, directory: PathBuf) -> InstallErrorCleanup {
+impl InstallErrorCleanup<'_> {
+    pub fn new<'a>(
+        index_db: &'a sqlite3::Connection,
+        repository: String,
+        directory: PathBuf,
+    ) -> InstallErrorCleanup {
         InstallErrorCleanup {
+            index_db: index_db,
             repository: repository,
             directory: directory,
             persist: false,
@@ -33,22 +39,18 @@ impl InstallErrorCleanup {
     }
 }
 
-impl Drop for InstallErrorCleanup {
+impl Drop for InstallErrorCleanup<'_> {
     fn drop(&mut self) {
         if !self.persist {
-            let index_db = common_directories::open_database();
+            let mut statement = self
+                .index_db
+                .prepare("DELETE FROM packages WHERE repository = ?")
+                .unwrap();
+            statement.bind(1, self.repository.as_str()).unwrap();
 
-            if index_db.is_ok() {
-                let connection = index_db.unwrap();
-                let mut statement = connection
-                    .prepare("DELETE FROM packages WHERE repository = ?")
-                    .unwrap();
-                statement.bind(1, self.repository.as_str()).unwrap();
-
-                loop {
-                    if statement.next().unwrap() == sqlite3::State::Done {
-                        break;
-                    }
+            loop {
+                if statement.next().unwrap() == sqlite3::State::Done {
+                    break;
                 }
             }
 
@@ -58,6 +60,7 @@ impl Drop for InstallErrorCleanup {
 }
 
 pub struct PackageInstallation<'a> {
+    index_db: &'a sqlite3::Connection,
     repository_author: &'a str,
     repository_name: &'a str,
     selected_release: Option<Release>,
@@ -69,10 +72,12 @@ pub struct PackageInstallation<'a> {
 
 impl PackageInstallation<'_> {
     pub fn new<'a>(
+        index_db: &'a sqlite3::Connection,
         repository_author: &'a str,
         repository_name: &'a str,
     ) -> PackageInstallation<'a> {
         PackageInstallation {
+            index_db: index_db,
             repository_author: repository_author,
             repository_name: repository_name,
             selected_release: None,
@@ -159,6 +164,7 @@ impl PackageInstallation<'_> {
 
         create_dir_all(&asset_path)?;
         let mut errdefer = InstallErrorCleanup::new(
+            self.index_db,
             format!("{}/{}", self.repository_author, self.repository_name),
             asset_path.clone(),
         );
@@ -180,7 +186,6 @@ impl PackageInstallation<'_> {
         {
             let path = entry.path();
             let format = FileFormat::from_file(path)?;
-            // let searched_file_name = &self.rename_executable.as_ref().unwrap_or(&(String::new(), String::new())).0;
 
             if format.kind() == Kind::Executable {
                 let mut permissions = metadata(path)?.permissions();
@@ -284,11 +289,9 @@ impl PackageInstallation<'_> {
     }
 
     fn add_index_db_entry(&self) -> Result<()> {
-        let index_db = common_directories::open_database()?;
-
         // stupid cargo formatter makes the code look horrendous (well, at least consistently horrendous)
         let mut statement =
-            index_db.prepare("INSERT INTO packages (repository, tag, lock, assetFilter, execRename, preReleases) VALUES(?, ?, ?, ?, ?, ?)")?;
+            self.index_db.prepare("INSERT INTO packages (repository, tag, lock, assetFilter, execRename, preReleases) VALUES(?, ?, ?, ?, ?, ?)")?;
         statement
             .bind(
                 1,

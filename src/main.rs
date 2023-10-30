@@ -61,9 +61,10 @@ async fn main() -> Result<()> {
             filter,
             rename,
         } => {
+            let index_db = common_directories::open_database()?;
             let (author, name) = split_repository_argument(repository)?;
 
-            let mut installer = cli::install::PackageInstallation::new(author, name);
+            let mut installer = cli::install::PackageInstallation::new(&index_db, author, name);
             installer.prereleases(*prerelease);
 
             if tag.is_some() {
@@ -97,9 +98,10 @@ async fn main() -> Result<()> {
             installer.install().await?;
         }
         Commands::Remove { repository } => {
+            let index_db = common_directories::open_database()?;
             let (author, name) = split_repository_argument(repository)?;
 
-            cli::remove::uninstall_package(author, name).await?;
+            cli::remove::uninstall_package(&index_db, author, name).await?;
         }
         Commands::List => {
             cli::list::list_repositories().await?;
