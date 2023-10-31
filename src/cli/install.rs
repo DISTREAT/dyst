@@ -165,6 +165,10 @@ impl PackageInstallation<'_> {
             selected_release.tag_name
         );
 
+        if selected_release.assets.clone().into_iter().count() == 0 {
+            return Err(anyhow!("There are no assets available"));
+        }
+
         let auto_selected_asset = self.auto_select_asset(&selected_release.assets)
             .context(format!(
                 "An asset could not be automatically selected, try applying a custom filter to select one: {}",
