@@ -204,7 +204,7 @@ impl PackageInstallation<'_> {
         .await
         .context("Failed to download the asset")?;
 
-        println!("  Adding an entry to the database");
+        println!("\n  Adding an entry to the database");
         self.add_index_db_entry()?;
 
         println!("  Creating symlinks to the executables...");
