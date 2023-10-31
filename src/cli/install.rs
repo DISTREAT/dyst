@@ -248,24 +248,28 @@ impl PackageInstallation<'_> {
         match assets
             .into_iter()
             .map(|asset| match &self.asset_regex_filter {
-                Some(filter) => (filter.find_iter(&asset.name.to_lowercase()).count(), asset),
+                Some(filter) => (
+                    filter.find_iter(&asset.name.to_lowercase()).count() as isize,
+                    asset,
+                ),
                 None => {
-                    let mut os_match_count = asset.name.to_lowercase().matches(consts::OS).count();
-                    let architecture_match_count =
-                        asset.name.to_lowercase().matches(consts::ARCH).count();
+                    let mut score: isize = 0;
+                    score += asset.name.to_lowercase().matches(consts::OS).count() as isize;
+                    score += asset.name.to_lowercase().matches(consts::ARCH).count() as isize;
 
-                    if consts::OS == "x86_64" {
-                        os_match_count += asset.name.to_lowercase().matches("amd64").count();
+                    if consts::ARCH == "x86_64" {
+                        score += asset.name.to_lowercase().matches("amd64").count() as isize;
                     }
 
-                    (os_match_count + architecture_match_count, asset)
+                    score -= asset.name.to_lowercase().matches("md5").count() as isize;
+                    score -= asset.name.to_lowercase().matches("sha").count() as isize;
+
+                    (score, asset)
                 }
             })
             .filter(|lookup| lookup.0 > 0)
-            .collect::<Vec<(usize, &Asset)>>()
-            .into_iter()
-            .sorted_by(|a, b| a.0.partial_cmp(&b.0).unwrap())
-            .last()
+            .sorted_by(|a, b| b.0.partial_cmp(&a.0).unwrap())
+            .next()
         {
             Some(lookup) => Some(lookup.1),
             None => None,
