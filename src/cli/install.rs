@@ -179,7 +179,10 @@ impl PackageInstallation<'_> {
                     .collect::<Vec<String>>()
                     .join(", ")
             ))?;
-        println!("Preparing for asset download: {}", auto_selected_asset.name);
+        println!(
+            "  Preparing for asset download: {}",
+            auto_selected_asset.name
+        );
 
         let mut asset_path = package_store.clone();
         asset_path.push(self.repository_author);
@@ -192,7 +195,7 @@ impl PackageInstallation<'_> {
             asset_path.clone(),
         );
 
-        println!("Downloading asset...");
+        println!("  Downloading asset...");
         Self::download_and_extract_asset(
             auto_selected_asset.browser_download_url.as_str(),
             &auto_selected_asset.name,
@@ -201,9 +204,10 @@ impl PackageInstallation<'_> {
         .await
         .context("Failed to download the asset")?;
 
+        println!("  Adding an entry to the database");
         self.add_index_db_entry()?;
 
-        println!("Creating symlinks to the executables...");
+        println!("  Creating symlinks to the executables...");
         for entry in WalkDir::new(&asset_path)
             .into_iter()
             .filter_map(Result::ok)
@@ -236,7 +240,7 @@ impl PackageInstallation<'_> {
 
         errdefer.persist();
 
-        println!("Done.");
+        println!("  Done.");
         Ok(())
     }
 
@@ -280,7 +284,7 @@ impl PackageInstallation<'_> {
 
         let progressbar = ProgressBar::new(total_size);
         progressbar.set_style(ProgressStyle::default_bar()
-            .template("[{elapsed_precise}] [{wide_bar}] {bytes}/{total_bytes} ({bytes_per_sec}, {eta})")?
+            .template("  [{elapsed_precise}] [{wide_bar}] {bytes}/{total_bytes} ({bytes_per_sec}, {eta})")?
             .progress_chars("=>-"));
 
         const UNARCHIVABLE_EXTENSIONS: &'static [&str] =

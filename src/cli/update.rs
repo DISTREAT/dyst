@@ -18,7 +18,7 @@ pub async fn update_repositories(index_db: &sqlite3::Connection) -> Result<()> {
 
         if lock {
             println!(
-                "Warning: '{}' is locked and will not be updated",
+                "Warning: '{}' is locked and will not be updated.",
                 repository
             );
             continue;
@@ -57,7 +57,7 @@ pub async fn update_repositories(index_db: &sqlite3::Connection) -> Result<()> {
             cli::remove::uninstall_package(&index_db, repository_author, repository_name).await?;
             installer.install().await?;
         } else {
-            println!("No newer release was found.");
+            println!("'{}' is up to date.", repository);
         }
     }
 

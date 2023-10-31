@@ -20,15 +20,15 @@ pub async fn uninstall_package(
     let package_parent_path = package_src_path.clone();
     package_src_path.push(repository_name);
 
-    println!("Removing source directory...");
+    println!("  Removing source directory...");
     remove_dir_all(&package_src_path)?;
 
     if package_parent_path.read_dir()?.next().is_none() {
-        println!("Removing empty parent directory");
+        println!("  Removing empty parent directory");
         remove_dir(&package_parent_path)?;
     }
 
-    println!("Deleting database entry");
+    println!("  Deleting database entry");
     let mut statement = index_db.prepare("DELETE FROM packages WHERE repository = ?")?;
     statement.bind(
         1,
@@ -41,7 +41,7 @@ pub async fn uninstall_package(
         }
     }
 
-    println!("Removing broken symlinks...");
+    println!("  Removing broken symlinks...");
     for entry in read_dir(executables_path)? {
         let entry = entry?;
         let path = entry.path();
@@ -54,7 +54,7 @@ pub async fn uninstall_package(
         }
     }
 
-    println!("Done.");
+    println!("  Done.");
 
     Ok(())
 }
