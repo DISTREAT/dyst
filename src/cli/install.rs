@@ -250,9 +250,13 @@ impl PackageInstallation<'_> {
             .map(|asset| match &self.asset_regex_filter {
                 Some(filter) => (filter.find_iter(&asset.name.to_lowercase()).count(), asset),
                 None => {
-                    let os_match_count = asset.name.to_lowercase().matches(consts::OS).count();
+                    let mut os_match_count = asset.name.to_lowercase().matches(consts::OS).count();
                     let architecture_match_count =
                         asset.name.to_lowercase().matches(consts::ARCH).count();
+
+                    if consts::OS == "x86_64" {
+                        os_match_count += asset.name.to_lowercase().matches("amd64").count();
+                    }
 
                     (os_match_count + architecture_match_count, asset)
                 }
