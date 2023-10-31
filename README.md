@@ -18,7 +18,7 @@ _This program was designed as an alternative to [stew](https://github.com/marwan
 
 ```
 # download the compiled binary
-curl -s -L https://github.com/DISTREAT/dyst/releases/download/0.1.0/dyst-linux-x86_64.tar.gz | tar xz - -C /tmp
+curl -s -L https://github.com/DISTREAT/dyst/releases/download/0.1.0/dyst-linux-x86_64.tar.gz | tar xzf - -C /tmp
 
 # 'bootstrap' dyst by installing dyst using dyst
 /tmp/dyst install DISTREAT/dyst -p
