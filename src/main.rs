@@ -1,5 +1,6 @@
 use anyhow::{anyhow, Context, Result};
 use clap::{Parser, Subcommand};
+use itertools::Itertools;
 use regex::Regex;
 
 mod cli;
@@ -38,6 +39,11 @@ enum Commands {
         /// Lock the package, preventing updates
         #[arg(short, long)]
         lock: bool,
+
+        // This is an option of install and not a command for it is easier accessible when needed
+        /// List all assets for the selected release
+        #[arg(short, long)]
+        assets: bool,
     },
     /// Remove an installed asset
     Remove {
@@ -94,11 +100,12 @@ async fn main() -> Result<()> {
             filter,
             rename,
             lock,
+            assets,
         } => {
             let index_db = common_directories::open_database()?;
             let (author, name) = split_repository_argument(repository)?;
 
-            if is_repository_installed(author, name)? {
+            if is_repository_installed(author, name)? && !*assets {
                 return Err(anyhow!("The requested repository is already installed"));
             }
 
@@ -134,7 +141,22 @@ async fn main() -> Result<()> {
             }
 
             installer.fetch_release().await?;
-            installer.install().await?;
+
+            if *assets {
+                println!(
+                    "{}",
+                    installer
+                        .selected_release
+                        .clone()
+                        .unwrap()
+                        .assets
+                        .into_iter()
+                        .map(|asset| asset.name)
+                        .join("\n")
+                );
+            } else {
+                installer.install().await?;
+            }
         }
         Commands::Remove { repository } => {
             let index_db = common_directories::open_database()?;
