@@ -32,30 +32,30 @@ Download compiled binaries from the [release page](https://github.com/DISTREAT/d
 
 ```
 # dyst will automatically try to detect the asset needed
-dyst install oven-sh/bun
+dyst install pnpm/pnpm
 
 # install prereleases if available
-dyst install -p oven-sh/bun
+dyst install DISTREAT/projavu -p
 ```
 
 ### Installing a specific asset
 
 ```
 # get a list of all assets
-dyst install -a oven-sh/bun
+dyst install jgm/pandoc -a
 
 # install a specific asset
-dyst install -f aarch64 oven-sh/bun
+dyst install oven-sh/bun -f linux-aarch64
 ```
 
 ### Installing a specific tag
 
 ```
 # install a specific tag
-dyst install -t 0.1.0 oven-sh/bun
+dyst install pnpm/pnpm -t v8.10.3
 
 # lock the asset, preventing updates
-dyst install -l -t 0.1.0 oven-sh/bun
+dyst install DISTREAT/projavu -l -t 0.1.1
 ```
 
 ### Removing a repository
@@ -65,7 +65,7 @@ dyst install -l -t 0.1.0 oven-sh/bun
 dyst list
 
 # remove all downloaded files
-dyst remove oven-sh/bun
+dyst remove pnpm/pnpm
 ```
 
 ### Renaming an executable
@@ -75,7 +75,7 @@ dyst remove oven-sh/bun
 dyst list-execs oven-sh/bun
 
 # rename an executable
-dyst rename oven-sh/bun old-name/new-name
+dyst rename pnpm/pnpm pnpm-linux-x64/pnpm
 ```
 
 ### Updating assets
@@ -84,4 +84,3 @@ dyst rename oven-sh/bun old-name/new-name
 # update all downloaded assts
 dyst update
 ```
-
